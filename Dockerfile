@@ -26,4 +26,4 @@ ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
 ENV DISPLAY=:99
 
 # Run the script
-CMD ["python", "tiktokupload.py"]
+CMD ["python", "-u", "tiktokupload.py"]
