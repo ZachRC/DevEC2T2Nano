@@ -1,30 +1,33 @@
-FROM python:3.9-slim
+FROM python:3.9
 
-# Install necessary dependencies
+# Install Playwright dependencies
 RUN apt-get update && apt-get install -y \
-    wget \
-    gnupg \
-    unzip \
-    chromium \
-    chromium-driver \
-    && rm -rf /var/lib/apt/lists/*
+    libnss3 \
+    libnspr4 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0
 
-# Set up the working directory
 WORKDIR /app
 
-# Copy the requirements file and install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY .env .
-# Copy the Python script and cookies
-COPY tiktokupload.py .
+# Install Playwright browsers
+RUN playwright install chromium
+
+COPY . .
+
 COPY cookies /app/cookies
 
-# Set environment variables for Chrome
-ENV CHROME_BIN=/usr/bin/chromium
-ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
-ENV DISPLAY=:99
-
-# Run the script
-CMD ["python", "-u", "tiktokupload.py"]
+CMD ["python", "tiktokupload.py"]

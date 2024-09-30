@@ -1,4 +1,4 @@
-undetected-chromedriver
-selenium
+playwright
+asyncio
 boto3
 python-dotenv
