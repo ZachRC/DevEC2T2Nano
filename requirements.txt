@@ -1,2 +1,4 @@
-undetected-chromedriver==3.5.3
-selenium==4.10.0
+undetected-chromedriver
+selenium
+boto3
+python-dotenv

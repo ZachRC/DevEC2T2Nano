@@ -16,6 +16,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+COPY .env .
 # Copy the Python script and cookies
 COPY tiktokupload.py .
 COPY cookies /app/cookies

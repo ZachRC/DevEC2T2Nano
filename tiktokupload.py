@@ -9,6 +9,10 @@ import time
 import os
 import random
 import sys
+import boto3
+from botocore.exceptions import NoCredentialsError
+from dotenv import load_dotenv
+from io import BytesIO
 
 def load_cookies(file_path):
     with open(file_path, 'r') as f:
@@ -78,7 +82,9 @@ def login_with_cookies():
         driver.get("https://www.tiktok.com/")
         
         print_flush("Loading cookies...")
-        cookies = load_cookies('/app/cookies/1.json')
+        cookie_files = [f for f in os.listdir('/app/cookies') if f.endswith('.json')]
+        random_cookie_file = random.choice(cookie_files)
+        cookies = load_cookies(f'/app/cookies/{random_cookie_file}')
         for cookie in cookies:
             if 'sameSite' in cookie:
                 if cookie['sameSite'] == 'unspecified':
@@ -114,14 +120,66 @@ def login_with_cookies():
                 print_flush(f"Searched for: {search_term}")
                 random_sleep(3, 7)
         
-        print_flush("Finished scrolling and interacting. Exiting...")
-    
+        print_flush("Navigating to profile page...")
+        driver.get("https://www.tiktok.com/@profile")
+        
+        print_flush("Waiting for profile header...")
+        header_xpath = "/html/body/div[1]/div[2]/div[2]/div/div/div[1]/div[2]/div[1]/div/h1"
+        
+        # Wait for the page to load
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+        
+        # Try to find the element using both XPath and CSS selector
+        try:
+            header_element = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.XPATH, header_xpath))
+            )
+        except TimeoutException:
+            print_flush("XPath selector failed, trying CSS selector...")
+            header_selector = "#main-content-others_homepage > div > div.e1457k4r14.css-w92hr-DivShareLayoutHeader-StyledDivShareLayoutHeaderV2-CreatorPageHeader.enm41492 > div.css-1o9t6sm-DivShareTitleContainer-CreatorPageHeaderShareContainer.e1457k4r15 > div.css-dozy74-DivUserIdentifierWrapper.e1gnmlil1 > div > h1"
+            header_element = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, header_selector))
+            )
+        
+        header_text = header_element.text
+        print_flush(f"Profile header: {header_text}")
+        
+        # Take a screenshot for debugging
+        take_screenshot_and_upload(driver, "profile_page.png")
+        print_flush("Screenshot uploaded to S3 as profile_page.png")
+        
     except Exception as e:
         print_flush(f"An error occurred: {str(e)}")
+        print_flush("Browser console logs:")
+        for entry in driver.get_log('browser'):
+            print_flush(entry)
+        
+        # Take a screenshot even if an error occurred
+        take_screenshot_and_upload(driver, "error_page.png")
+        print_flush("Error screenshot uploaded to S3 as error_page.png")
     
     finally:
         print_flush("Closing the browser...")
         driver.quit()
 
+def upload_to_s3(image_data, filename):
+    s3_client = boto3.client('s3')
+    try:
+        s3_client.upload_fileobj(
+            BytesIO(image_data),
+            os.getenv('S3_BUCKET_NAME'),
+            filename
+        )
+        print_flush(f"Successfully uploaded {filename} to S3")
+    except NoCredentialsError:
+        print_flush("Credentials not available for S3 upload")
+    except Exception as e:
+        print_flush(f"Error uploading to S3: {str(e)}")
+
+def take_screenshot_and_upload(driver, filename):
+    screenshot = driver.get_screenshot_as_png()
+    upload_to_s3(screenshot, filename)
+
 if __name__ == "__main__":
+    load_dotenv()
     login_with_cookies()
